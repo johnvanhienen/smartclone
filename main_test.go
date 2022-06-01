@@ -8,9 +8,9 @@ func TestScrubUrl(t *testing.T) {
     t.Run("test ssh git url", func(t *testing.T) {
         repoStructure := Repo{
             source: "gitlab.com",
-            path:   "user/project",
+            path:   "org/project",
         }
-        url := "git@gitlab.com:user/project.git"
+        url := "git@gitlab.com:org/project.git"
         got := scrubUrl(url)
         want := repoStructure
 
@@ -22,9 +22,9 @@ func TestScrubUrl(t *testing.T) {
     t.Run("test https git url", func(t *testing.T) {
         repoStructure := Repo{
             source: "gitlab.com",
-            path:   "user/project",
+            path:   "org/project",
         }
-        url := "https://gitlab.com/user/project.git"
+        url := "https://gitlab.com/org/project.git"
         got := scrubUrl(url)
         want := repoStructure
 

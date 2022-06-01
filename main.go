@@ -3,6 +3,7 @@ package main
 import (
     "fmt"
     "os"
+    "os/exec"
     "strings"
 )
 
@@ -22,8 +23,17 @@ func (c *context) fillDefaults() {
 func main() {
     ctx := context{}
     ctx.fillDefaults()
-    fmt.Println(scrubUrl("https://gitlab.com/jvanhienen/dotfiles.git"))
-    fmt.Println(scrubUrl("git@gitlab.com:jvanhienen/dotfiles.git"))
+    url := "git@gitlab.com:jvanhienen/dotfiles.git"
+    repo := scrubUrl(url)
+    clonePath, err := createDirPath(repo, ctx)
+    if err != nil {
+        fmt.Println(err)
+    }
+    err = cloneRepo(clonePath, url)
+    if err != nil {
+        fmt.Println(err)
+    }
+
 }
 
 func scrubUrl(url string) (repo Repo) {
@@ -51,6 +61,39 @@ func scrubHttpsUrl(url string) (r Repo) {
     prefix := fmt.Sprintf("https://%s/", r.source)
     pathNoPrefix := strings.TrimPrefix(url, prefix)
     r.path = strings.TrimSuffix(pathNoPrefix, ".git")
-    
+
     return r
+}
+
+func createDirPath(r Repo, ctx context) (path string, err error) {
+    path = fmt.Sprintf("%s/%s", ctx.defaultPath, r.path)
+
+    if _, err := os.Stat(path); !os.IsNotExist(err) {
+        pathWithSource := fmt.Sprintf("%s-%s", path, r.source)
+        defaultAnswer := "n"
+        fmt.Printf("Path already exists. Do you want to create '%s' instead? y/N\t", pathWithSource)
+        fmt.Scanf("%s", &defaultAnswer)
+
+        if strings.ToLower(defaultAnswer) == "n" || defaultAnswer == "" {
+            fmt.Println("Abort cloning..")
+            os.Exit(0)
+        } else if strings.ToLower(defaultAnswer) == "y" {
+            path = pathWithSource
+        }
+    }
+    err = os.MkdirAll(path, 0755)
+    if err != nil {
+        return "", err
+    }
+    return path, nil
+}
+
+func cloneRepo(clonePath string, url string) (err error) {
+    cmd := exec.Command("git", "clone", url, clonePath)
+    err = cmd.Run()
+    if err != nil {
+        return err
+    }
+    fmt.Printf("Cloned repository '%s' to '%s'", url, clonePath)
+    return nil
 }
