@@ -16,36 +16,34 @@ var (
 )
 
 type Repo struct {
-    source string
-    path   string
+    url       string
+    gitDomain string
+    savePath  string
+    cloneDir  string
 }
 
-type context struct {
-    defaultPath string
-}
-
-func (c *context) fillDefaults() {
-    c.defaultPath = fmt.Sprintf("%s/git", os.Getenv("HOME"))
+func (r *Repo) fillDefaults() {
+    r.cloneDir = fmt.Sprintf("%s/git", os.Getenv("HOME"))
 }
 
 func main() {
     versionFlag := flag.Bool("v", false, "Displays the version number of Smartclone and Go.")
     flag.Parse()
-
     if *versionFlag {
         fmt.Println(versionStr)
         os.Exit(0)
     }
-    url := flag.Arg(0)
 
-    ctx := context{}
-    ctx.fillDefaults()
-    repo := scrubUrl(url)
-    clonePath, err := createDirPath(repo, ctx)
+    repo := Repo{}
+    repo.fillDefaults()
+    repo.url = flag.Arg(0)
+
+    repo.gitDomain, repo.savePath = scrubUrl(repo.url)
+    clonePath, err := createDirPath(repo)
     if err != nil {
         fmt.Println(err)
     }
-    err = cloneRepo(clonePath, url)
+    err = cloneRepo(clonePath, repo.url)
     if err != nil {
         fmt.Println(err)
         cleanupPathArtifacts(clonePath)
@@ -53,40 +51,38 @@ func main() {
 
 }
 
-func scrubUrl(url string) (repo Repo) {
+func scrubUrl(url string) (gitDomain string, savePath string) {
     if strings.HasPrefix(url, "git@") {
-        repo = scrubSshUrl(url)
+        return scrubSshUrl(url)
     } else if strings.HasPrefix(url, "https://") {
-        repo = scrubHttpsUrl(url)
+        return scrubHttpsUrl(url)
     } else {
         fmt.Println("Please provide a url that starts with 'git@' or 'https://'")
         os.Exit(1)
     }
-    return repo
+    return
 }
 
-func scrubSshUrl(url string) (r Repo) {
-    splitUrl := strings.Split(url, ":")
-    r.source = strings.TrimPrefix(splitUrl[0], "git@")
-    r.path = strings.TrimSuffix(splitUrl[1], ".git")
-    return r
+func scrubSshUrl(originalUrl string) (gitDomain string, savePath string) {
+    splittedUrl := strings.Split(originalUrl, ":")
+    gitDomain = strings.TrimPrefix(splittedUrl[0], "git@")
+    savePath = strings.TrimSuffix(splittedUrl[1], ".git")
+    return gitDomain, savePath
 }
 
-func scrubHttpsUrl(url string) (r Repo) {
-    r.source = strings.Split(url, "/")[2]
-
-    prefix := fmt.Sprintf("https://%s/", r.source)
-    pathNoPrefix := strings.TrimPrefix(url, prefix)
-    r.path = strings.TrimSuffix(pathNoPrefix, ".git")
-
-    return r
+func scrubHttpsUrl(originalUrl string) (gitDomain string, savePath string) {
+    gitDomain = strings.Split(originalUrl, "/")[2]
+    prefix := fmt.Sprintf("https://%s/", gitDomain)
+    pathNoPrefix := strings.TrimPrefix(originalUrl, prefix)
+    savePath = strings.TrimSuffix(pathNoPrefix, ".git")
+    return gitDomain, savePath
 }
 
-func createDirPath(r Repo, ctx context) (path string, err error) {
-    path = fmt.Sprintf("%s/%s", ctx.defaultPath, r.path)
+func createDirPath(r Repo) (path string, err error) {
+    path = fmt.Sprintf("%s/%s", r.cloneDir, r.savePath)
 
     if _, err := os.Stat(path); !os.IsNotExist(err) {
-        pathWithSource := fmt.Sprintf("%s-%s", path, r.source)
+        pathWithSource := fmt.Sprintf("%s-%s", path, r.gitDomain)
         createAltDir := "n"
         fmt.Printf("Path already exists. Do you want to create '%s' instead? y/N\t", pathWithSource)
         _, err := fmt.Scanf("%s", &createAltDir)
