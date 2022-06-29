@@ -45,8 +45,11 @@ func main() {
     }
     err = cloneRepo(clonePath, repo.url)
     if err != nil {
-        fmt.Println(err)
-        cleanupPathArtifacts(clonePath)
+        fmt.Errorf("%s", err)
+        err := cleanupPathArtifacts(clonePath)
+        if err != nil {
+            fmt.Errorf("%s", err)
+        }
     }
 
 }
@@ -110,16 +113,17 @@ func cloneRepo(clonePath string, url string) (err error) {
     if err != nil {
         return fmt.Errorf("could not clone repository, error message: %s", err)
     }
-    fmt.Printf("Cloned repository '%s' to '%s'", url, clonePath)
+    fmt.Printf("Cloned repository '%s' to '%s'\n", url, clonePath)
     return nil
 }
 
-func cleanupPathArtifacts(path string) {
+func cleanupPathArtifacts(path string) (err error) {
     if _, err := os.Stat(path); !os.IsNotExist(err) {
         fmt.Printf("Removing clone artifacts..\n")
         err := os.RemoveAll(path)
         if err != nil {
-            return
+            return err
         }
     }
+    return
 }
