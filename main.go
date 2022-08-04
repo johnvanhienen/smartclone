@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	version    = "v0.2.0"
+	version    = "v0.2.1"
 	goVersion  = runtime.Version()
 	versionStr = fmt.Sprintf("Smartclone version %v\n%v", version, goVersion)
 )
